@@ -9,24 +9,26 @@
 	var
 
 	//Boid prototype
-	Boid = function(x, y, vx, vy) {
+	Boid = function(x, y, vx, vy, hue) {
 		this.pos = $V([x, y]);
 		this.vel = $V([vx, vy]);
 
-		this.color = '#' + (function(h){return new Array(7-h.length).join("0")+h})((Math.random()*0x1000000<<0).toString(16));
+		this.color = hsl2rgb(hue + Math.random() * 8 - 4, Math.random() * 50 + 50, Math.random() * 50 + 30);
+		this.colorHex = '#' + this.color.r.toString(16) + this.color.g.toString(16) + this.color.b.toString(16);
 
 		this.separationFactor = 12;
 		this.aligmentFactor = 1/80;
 		this.cohesionFactor = 1/50;
 		this.tendToPlaceFactor = 1/50;
+		this.windVector = $V([1, .5]);
 		this.velLimit = 15;
 		this.boundPosFactor = 10;
 	};
 	Boid.prototype = {
-		separation: function(boids, index) {
-			var _c = $V([0, 0]);
-			for(var _i = 0, _l = boids.length; _i < _l; _i++) {
-				var _b = boids[_i];
+		separation: function(boids, index, _l) {
+			var _c = $V([0, 0]), _i, _b;
+			for(_i = 0; _i < _l; _i++) {
+				_b = boids[_i];
 				if(_i !== index) {
 					if(this.pos.distanceFrom(_b.pos) < this.separationFactor) {
 						_c = _c.subtract(_b.pos.subtract(this.pos));
@@ -35,32 +37,17 @@
 			}
 			return _c;
 		},
-		aligment: function(boids, index) {
-			var _c = $V([0, 0]);
-			for(var _i = 0, _l = boids.length; _i < _l; _i++) {
-				var _b = boids[_i];
-				if(_i !== index) {
-					_c = _c.add(_b.vel);
-				}
-			}
-			_c = _c.multiply(1/(_l - 1));
-
-			return _c.subtract(this.vel).multiply(this.aligmentFactor);
+		aligment: function(_sumVel, _avgMultiplier) {
+			return _sumVel.subtract(this.vel).multiply(_avgMultiplier).subtract(this.vel).multiply(this.aligmentFactor);
 		},
-		cohesion: function(boids, index) {
-			var _c = $V([0, 0]);
-			for(var _i = 0, _l = boids.length; _i < _l; _i++) {
-				var _b = boids[_i];
-				if(_i !== index) {
-					_c = _c.add(_b.pos);
-				}
-			}
-			_c = _c.multiply(1/(_l - 1));
-
-			return _c.subtract(this.pos).multiply(this.cohesionFactor);
+		cohesion: function(_sumPos, _avgMultiplier) {
+			return _sumPos.subtract(this.pos).multiply(_avgMultiplier).subtract(this.pos).multiply(this.cohesionFactor);
 		},
 		tendToPlace: function(place) {
 			return place.subtract(this.pos).multiply(this.tendToPlaceFactor);
+		},
+		wind: function() {
+			return this.windVector;
 		},
 		limitVel: function() {
 			if(this.vel.modulus() > this.velLimit) {
@@ -102,8 +89,7 @@
 		_height,
 		_widthHalf,
 		_heightHalf,
-		_mX = 0,
-		_mY = 0,
+		_attractionVector = $V([0, 0]),
 
 		_boids,
 
@@ -114,7 +100,7 @@
 
 			_updateSize();
 
-			_createBoids(100);
+			_createBoids(500);
 
 			_update();
 		},
@@ -150,8 +136,7 @@
 		},
 
 		_updateMousePosition = function(event) {
-			_mX = event.clientX;
-			_mY = event.clientY;
+			_attractionVector.setElements([event.clientX, event.clientY]);
 		},
 
 		_drawBackground = function() {
@@ -160,42 +145,41 @@
 		},
 
 		_updateBoids = function() {
-			var _attractionVector = $V([_mX, _mY]);
-			for(var _i = 0, _l = _boids.length; _i < _l; _i++) {
+			for(var _i = 0, _l = _boids.length, _avgMultiplier = 1/(_l - 1), _sumPos = $V([0, 0]), _sumVel = $V([0, 0]), _b; _i < _l; _i++) {
+				_b = _boids[_i];
+				_sumPos = _sumPos.add(_b.pos);
+				_sumVel = _sumVel.add(_b.vel);
+			}
+
+			for(var _i = 0; _i < _l; _i++) {
 				var _b = _boids[_i],
-					_s = _b.separation(_boids, _i),
-					_a = _b.aligment(_boids, _i),
-					_c = _b.aligment(_boids, _i),
+					_prevPos = _b.pos,
+					_prevVel = _b.vel,
+					_s = _b.separation(_boids, _i, _l),
+					_a = _b.aligment(_sumVel, _avgMultiplier),
+					_c = _b.cohesion(_sumPos, _avgMultiplier),
 					_t = _b.tendToPlace(_attractionVector),
+					_w = _b.wind(),
 					_pos;
 				_b.vel = _b.vel.add(_s);
 				_b.vel = _b.vel.add(_a);
 				_b.vel = _b.vel.add(_c);
 				_b.vel = _b.vel.add(_t);
-				_b.boundPos(0, _width/2, 0, _height/2);
+				_b.vel = _b.vel.add(_w);
+				_b.boundPos(0, _width, 0, _height);
 				_b.limitVel();
 				_b.pos = _pos =_b.pos.add(_b.vel);
 
-				/*if(_pos.elements[0] < 0) {
-					_b.pos.elements[0] = _width + _pos.elements[0];
-				} else if(_pos.elements[0] > _width) {
-					_b.pos.elements[0] = _pos.elements[0] - _width;
-				}
-
-				if(_pos.elements[1] < 0) {
-					_b.pos.elements[1] = _height + _pos.elements[1];
-				} else if(_pos.elements[1] > _height) {
-					_b.pos.elements[1] = _pos.elements[1] - _height;
-				}*/
+				_sumPos = _sumPos.subtract(_prevPos).add(_b.pos);
+				_sumVel = _sumVel.subtract(_prevVel).add(_b.vel);
 			}
 		},
 
 		_drawBoids = function() {
-
 			for(var _i = 0, _l = _boids.length; _i < _l; _i++) {
 				var _b = _boids[_i],
 					_pos = _b.pos;
-				_ctx.fillStyle = _b.color;
+				_ctx.fillStyle = _b.colorHex;
 				_ctx.beginPath();
 				_ctx.arc(_pos.elements[0], _pos.elements[1], 5, 0, Math.PI * 2, false);
 				_ctx.closePath();
@@ -205,9 +189,10 @@
 
 		_createBoids = function(amount) {
 			
+			var _hue = Math.random() * 360;
 			_boids = [];
 			for(var _i = 0; _i < amount; _i++) {
-				_boids[_i] = new Boid(Math.random() * _width/2, Math.random() * _height/2, 0, 0);
+				_boids[_i] = new Boid(Math.random() * _width, Math.random() * _height, 0, 0, _hue);
 			}
 
 		},
