@@ -77,4 +77,36 @@ window.log = function f(){ log.history = log.history || []; log.history.push(arg
         return 255 * v;
     }
 
+    window.sgn = function(val) {
+        if(val > 0) {
+            return 1;
+        } else if(val < 0) {
+            return -1;
+        }
+        return 0;
+    }
+
+    window.offScreenRect = function(wWidth, wHeight, width, height) {
+        var xRect = Math.floor(Math.random() * 3),
+            yRect = (function(){
+                if(xRect !== 1) {
+                    return Math.floor(Math.random() * 3);
+                } else {
+                    var val = Math.floor(Math.random() * 3);
+                    while(val === 1) {
+                        val = Math.floor(Math.random() * 3);
+                    }
+                    return val;
+                }
+            })(),
+            rect = {};
+
+            rect.minX = Math.random() * wWidth + (xRect - 1) * wWidth;
+            rect.maxX = Math.min(rect.minX, Math.random() * wWidth + (xRect - 1) * wWidth);
+            rect.minY = Math.random() * wHeight + (yRect - 1) * wHeight;
+            rect.maxY = Math.min(rect.minY, Math.random() * wHeight + (yRect - 1) * wHeight);
+
+        return rect;
+    }
+
 }());
