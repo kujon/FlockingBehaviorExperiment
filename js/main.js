@@ -7,6 +7,16 @@
 
 	"use strict";
 
+	//DBPedia prototype
+	var DBPedia = function() {
+		this.queryUrl = '';
+	};
+	DBPedia.prototype = {
+		query = function(term, callback) {
+
+		}
+	};
+
 	var
 
 	//Boid prototype
