@@ -56,7 +56,7 @@
 
 			_updateSize();
 
-			_createBoids(40, 50);
+			_createBoids(20, 40);
 
 			_update(_lastTime = (new Date()).getTime());
 		},
@@ -326,6 +326,26 @@
 			ctx.fillText(this.text, this.pos.elements[0], this.pos.elements[1]);
 		}
 	};
+
+
+	//Tag prototype
+	Lab.Tag = function(name, url, xRange, yRange, herdsCount, boidsCount) {
+		this.pos = $V([random() * (xRange.elements[1] - xRange.elements[0]) + xRange.elements[0], random() * (yRange.elements[1] - yRange.elements[0]) + yRange.elements[0]]);
+		this.name = new Lab.HerdName(name, 'Open Sans 32px normal', 'rgb(255, 255, 255)', this.pos.elements[0], this.pos.elements[1]);
+		this.url = url;
+		this.herds = (function() {
+			var o = [];
+		})();
+	};
+	Lab.Tag.prototype = {
+		update: function(dt, time) {
+
+		},
+		draw: function(ctx) {
+
+		}
+	};	
+
 
 	$(function(){
 
